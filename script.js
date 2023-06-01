@@ -1,5 +1,5 @@
 // Replace with the actual deployed contract address
-const contractAddress = "<YOUR_CONTRACT_ADDRESS>";
+const contractAddress = "0x4E483C4327255526bd251e5F3e23491A147Fd52e";
 // Replace with the actual contract ABI
 const contractABI = [
   {
@@ -60,4 +60,5 @@ const contractABI = [
   {
     "inputs": [],
     "payable": false,
-    "stateMutability": "nonpayable
+    "stateMutability": "nonpayable"
+  }

@@ -1,43 +1,59 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.4.22 <0.9.0;
+pragma solidity ^0.8.0;
 
-
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-contract DigitalDataStorage is ERC20 {
-    uint256 private _dataCounter;
-    mapping(uint256 => string) private _dataStorage;
-    address private _owner;
-
-    event DataStored(uint256 indexed index, string data);
-
-    constructor() ERC20("Digital Data Storage Token", "DDST") {
-        _dataCounter = 0;
-        _owner = msg.sender;
+contract DecentralizedDataStorageSystem {
+    struct Data {
+        bytes32 dataHash;
+        address owner;
+        mapping(address => bool) authorizedUsers;
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == _owner, "Only contract owner can perform this action");
+    mapping(bytes32 => Data) private dataStore;
+    
+    event DataStored(bytes32 dataHash, address indexed owner);
+    event DataTransferred(bytes32 dataHash, address indexed from, address indexed to);
+
+    modifier onlyOwner(bytes32 dataHash) {
+        require(dataStore[dataHash].owner == msg.sender, "You are not the owner of this data");
+        _;
+    }
+    
+    modifier onlyAuthorized(bytes32 dataHash) {
+        require(dataStore[dataHash].authorizedUsers[msg.sender], "You are not authorized to access this data");
         _;
     }
 
-    function storeData(string memory data) external {
-        _dataCounter++;
-        _dataStorage[_dataCounter] = data;
-        _mint(msg.sender, 1);
-        emit DataStored(_dataCounter, data);
+    function storeData(bytes32 dataHash) public {
+        require(dataStore[dataHash].owner == address(0), "Data with this hash already exists");
+        dataStore[dataHash].dataHash = dataHash;
+        dataStore[dataHash].owner = msg.sender;
+        dataStore[dataHash].authorizedUsers[msg.sender] = true;
+        emit DataStored(dataHash, msg.sender);
     }
 
-    function getData(uint256 index) external view returns (string memory) {
-        require(index > 0 && index <= _dataCounter, "Invalid index");
-        return _dataStorage[index];
+    function transferData(bytes32 dataHash, address recipient) public onlyOwner(dataHash) {
+        require(recipient != address(0), "Invalid recipient address");
+        dataStore[dataHash].owner = recipient;
+        dataStore[dataHash].authorizedUsers[recipient] = true;
+        emit DataTransferred(dataHash, msg.sender, recipient);
     }
 
-    function transferData(uint256 index, address to) external onlyOwner {
-        require(index > 0 && index <= _dataCounter, "Invalid index");
-        require(to != address(0), "Invalid recipient address");
-        _dataStorage[index] = "";
-        _transfer(msg.sender, to, 1);
+    function authorizeUser(bytes32 dataHash, address user) public onlyOwner(dataHash) {
+        require(user != address(0), "Invalid user address");
+        dataStore[dataHash].authorizedUsers[user] = true;
+    }
+
+    function revokeAuthorization(bytes32 dataHash, address user) public onlyOwner(dataHash) {
+        require(user != address(0), "Invalid user address");
+        dataStore[dataHash].authorizedUsers[user] = false;
+    }
+
+    function getData(bytes32 dataHash) public view onlyAuthorized(dataHash) returns (bytes32, address) {
+        Data storage data = dataStore[dataHash];
+        return (data.dataHash, data.owner);
+    }
+
+    function isAuthorized(bytes32 dataHash, address user) public view returns (bool) {
+        return dataStore[dataHash].authorizedUsers[user];
     }
 }
-
